@@ -1,0 +1,101 @@
+2019.7.19
+jyl
+
+protobuf 序列化和反序列的所消耗的时间和空间都比gson和fastjson小
+
+protobufu学习：
+
+1.在main目录下创建proto/test.proto
+
+	内容：
+
+	//指定protobuf的版本
+	syntax="proto2";
+
+	//在java中没用
+	package tutorial;
+
+	//包名
+	option java_package = "com.example.tutorial";
+	option java_outer_classname = "AddressBookProtos";
+
+	//message相当于java中的class
+	message Person{
+	    //required 表示必须设置的变量 (不能为null)
+	    required string name =1;
+	    required int32 id = 2;
+	    //optional 表示可以为空的变量
+	    optional string email =3;
+
+	    enum PhoneType{
+		MOBILE=0;
+		HOME =1;
+		WORK =2;
+	    }
+
+	    //定义一个内部类
+	    message PhoneNumber{
+		required string number =1;
+		//此处的[default =HOME]表示默认使用HOME的类型
+		optional PhoneType type = 2 [default =HOME];
+	    }
+
+	    //repeated 重复的(集合)，表示有多个这样的成员
+	    repeated PhoneNumber phones =4;
+
+	}
+	message AddressBook{
+	    repeated Person people = 1;
+	}
+
+
+2.编译protobuf文件：用官网的编译工具或者AS
+	2.1用工具在cmd中编译
+	2.2 用google提供的gradle插件(github上)
+	配置插件方法
+		1.在最顶层的gradle的dependencies中添加   classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.9'
+		2.在app的gradle中引入插件 apply plugin: 'com.google.protobuf'
+		3.
+			protobuf {
+				    protoc {
+					artifact = 'com.google.protobuf:protoc:3.0.0'
+				    }
+				    plugins {
+					javalite {
+					    artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0'
+					}
+				    }
+				    generateProtoTasks {
+					all().each { task ->
+					    task.builtins {
+						remove java
+					    }
+					    task.plugins {
+						javalite { }
+					    }
+					}
+				    }
+				}
+			
+3.使用
+ //设置数据
+        AddressBookProtos.Person.PhoneNumber.Builder phoneNum = AddressBookProtos.Person.PhoneNumber.newBuilder().setNumber("10086");
+        AddressBookProtos.Person.Builder person =
+                AddressBookProtos.Person.newBuilder().setName("张三").setId(1).addPhones(phoneNum);
+        AddressBookProtos.Person.Builder person1 =
+                AddressBookProtos.Person.newBuilder().setName("李四").setId(1).addPhones(phoneNum);
+
+        AddressBookProtos.AddressBook addressBook =
+                AddressBookProtos.AddressBook.newBuilder().addPeople(person).addPeople(person1).build();
+
+        //保存为一个文件  或者 向服务器发送
+        //序列化 将对象转化为byte数组
+        byte[] bytes = addressBook.toByteArray();
+
+        //反序列化 读到内存 或者 解析从服务器返回的数据
+        try {
+            AddressBookProtos.AddressBook addressBook1 =
+                    AddressBookProtos.AddressBook.parseFrom(bytes);
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        }
